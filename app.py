@@ -1,79 +1,109 @@
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
-
+import logging, io, os, sys
+import flask
+from flask import Flask, request, jsonify, render_template
+import pickle
+import bz2
+import _pickle as cPickle
+import json
 import pandas as pd
+import numpy as np
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+app = Flask(__name__)
 
-df = pd.read_excel(
-    "https://github.com/chris1610/pbpython/blob/master/data/salesfunnel.xlsx?raw=True"
-)
-mgr_options = df["Manager"].unique()
+rf_model = None
+column_name = [
+	 'borough', 
+	 'instant_bookable',
+	 'room_type',
+	 'property_type',
+	 'host_is_superhost',
+	 'host_total_listings_count',
+	 'accommodates',
+	 'bedrooms',
+	 'bathrooms',
+	 'minimum_nights',
+	 'maximum_nights',
+	 'security_deposit',
+	 'cleaning_fee',
+	 'coffee_machine',
+	 'outdoor_space']
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+df = pd.read_pickle('static/data_nn.pkl')
+# Load any compressed pickle file
+def decompress_pickle(file):
+    data = bz2.BZ2File(file, 'rb')
+    data = cPickle.load(data)
+    return data
 
-server = app.server
-
-top_markdown_text = '''
-This is my first deployed app
-'''
-
-app.layout = html.Div([
-    html.H2("Sales Funnel Report"),
-    html.Div(
-        [
-            dcc.Dropdown(
-                id="Manager",
-                options=[{
-                    'label': i,
-                    'value': i
-                } for i in mgr_options],
-                value='All Managers'),
-        ],
-        style={'width': '25%',
-               'display': 'inline-block'}),
-    dcc.Graph(id='funnel-graph'),
-])
-
-
-@app.callback(
-    dash.dependencies.Output('funnel-graph', 'figure'),
-    [dash.dependencies.Input('Manager', 'value')])
-def update_graph(Manager):
-    if Manager == "All Managers":
-        df_plot = df.copy()
-    else:
-        df_plot = df[df['Manager'] == Manager]
-
-    pv = pd.pivot_table(
-        df_plot,
-        index=['Name'],
-        columns=["Status"],
-        values=['Quantity'],
-        aggfunc=sum,
-        fill_value=0)
-
-    trace1 = go.Bar(x=pv.index, y=pv[('Quantity', 'declined')], name='Declined')
-    trace2 = go.Bar(x=pv.index, y=pv[('Quantity', 'pending')], name='Pending')
-    trace3 = go.Bar(x=pv.index, y=pv[('Quantity', 'presented')], name='Presented')
-    trace4 = go.Bar(x=pv.index, y=pv[('Quantity', 'won')], name='Won')
-
-    return {
-        'data': [trace1, trace2, trace3, trace4],
-        'layout':
-        go.Layout(
-            title='Customer Order Status for {}'.format(Manager),
-            barmode='stack')
-    }
+@app.before_first_request
+def startup():
+    global rf_model 
+    global nn_model
+    # rf model
+    rf_model = decompress_pickle('static/rf_model.pbz2')
+    # nn model
+    with open('static/similar_listing.pickle', 'rb') as f:
+        nn_model = pickle.load(f)
 
 
+@app.errorhandler(500)
+def server_error(e):
+    logging.exception('some eror')
+    return """
+    And internal error <pre>{}</pre>
+    """.format(e), 500
+
+@app.route("/", methods=['POST', 'GET'])
+def index():
+	return flask.render_template('home.html')
+
+# Pass from data to prediction model
+def predict_price(inputs):
+    data = pd.DataFrame([inputs], columns=column_name)
+    return round(rf_model.predict(data)[0], 2)
+
+def predict_listing(inputs):
+	data = pd.DataFrame([inputs], columns=['price'] + column_name)
+	recs = nn_model['knn'].kneighbors(nn_model['preprocessor'].transform(data), return_distance = False)
+	rec_df = pd.DataFrame(columns = df.columns.tolist())
+	for i in recs:
+		rec_df = rec_df.append(df.iloc[i], ignore_index=True)
+
+	return rec_df[['listing_url', 'borough', 'price']]
+
+
+
+@app.route('/result', methods = ['POST'])
+def result():
+	if request.method == 'POST':
+		borough = request.form['borough']
+		instant_bookable = int(request.form['instant_bookable'])
+		room_type = request.form['room_type']
+		property_type = request.form['property_type']
+		host_is_superhost = int(request.form['host_is_superhost'])
+		host_total_listings_count = int(request.form['host_total_listings_count'])
+		accommodates = int(request.form['accommodates'])
+		bedrooms = int(request.form['bedrooms'])
+		bathrooms = int(request.form['bathrooms'])
+		minimum_nights = int(request.form['minimum_nights'])
+		maximum_nights = int(request.form['maximum_nights'])
+		security_deposit = float(request.form['security_deposit'])
+		cleaning_fee = float(request.form['cleaning_fee'])
+		coffee_machine = int(request.form['coffee_machine'])
+		outdoor_space = int(request.form['outdoor_space'])
+		inputs = [borough, instant_bookable, room_type, property_type, host_is_superhost, host_total_listings_count, accommodates, bedrooms, bathrooms, minimum_nights, maximum_nights, security_deposit, cleaning_fee, coffee_machine, outdoor_space]
+		result = predict_price(inputs)
+		nn_inputs = [result] + inputs
+		sim_list = predict_listing(nn_inputs)
+		sim_list.columns = ['Links', 'Neighborhood', 'Price']
+
+		return render_template("home.html", table=sim_list.to_html(index=False, render_links=True), prediction = result, borough = borough, instant_bookable = instant_bookable, room_type = room_type, property_type = property_type, host_is_superhost = host_is_superhost, host_total_listings_count = host_total_listings_count, accommodates = accommodates, bedrooms = bedrooms, bathrooms = bathrooms, minimum_nights = minimum_nights, maximum_nights = maximum_nights, security_deposit = security_deposit, cleaning_fee = cleaning_fee, coffee_machine = coffee_machine, outdoor_space = outdoor_space)
+	# response = jsonify({
+	# 	# populate the estimated price to the frontend
+	# 	'estimated_price': util.predict_price(inputs)
+	# 	})
+	# reponse.headers.add('Access-Control-Allow-Origin', '*')
+
+	#return response
 if __name__ == '__main__':
-    app.run_server(debug=True)
-
-
-
-
-
-
-
+    app.run(port=8000, debug=True)
