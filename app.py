@@ -5,7 +5,7 @@ import dash_html_components as html
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 df = pd.read_excel(
-    "https://github.com/chris1610/pbpython/blob/master/data/salesfunnel.xlsx?raw=True"
+    "{{ url_for('static', filename='salesfunnel.csv') }}"
 )
 mgr_options = df["Manager"].unique()
 
