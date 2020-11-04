@@ -15,7 +15,7 @@ server = app.server
 
 tsne_2d = pd.read_csv('static/onet_tsne.csv')
 
-fig = px.scatter(tsne_2d,
+fig = px.scatter(tsne_2d, x='dim_0',y='dim_1',
                  title='Occupational Landscape',width=1000, height=700)
 
 app.layout = html.Div([
