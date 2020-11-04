@@ -1,77 +1,29 @@
+import os
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-df = pd.read_excel(
-    "{{ url_for('static', filename='salesfunnel.csv') }}"
-)
-mgr_options = df["Manager"].unique()
-
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 server = app.server
 
-top_markdown_text = '''
-This is my first deployed app
-'''
-
 app.layout = html.Div([
-    html.H2("Sales Funnel Report"),
-    html.Div(
-        [
-            dcc.Dropdown(
-                id="Manager",
-                options=[{
-                    'label': i,
-                    'value': i
-                } for i in mgr_options],
-                value='All Managers'),
-        ],
-        style={'width': '25%',
-               'display': 'inline-block'}),
-    dcc.Graph(id='funnel-graph'),
+    html.H2('Hello World'),
+    dcc.Dropdown(
+        id='dropdown',
+        options=[{'label': i, 'value': i} for i in ['LA', 'NYC', 'MTL']],
+        value='LA'
+    ),
+    html.Div(id='display-value')
 ])
 
-
-@app.callback(
-    dash.dependencies.Output('funnel-graph', 'figure'),
-    [dash.dependencies.Input('Manager', 'value')])
-def update_graph(Manager):
-    if Manager == "All Managers":
-        df_plot = df.copy()
-    else:
-        df_plot = df[df['Manager'] == Manager]
-
-    pv = pd.pivot_table(
-        df_plot,
-        index=['Name'],
-        columns=["Status"],
-        values=['Quantity'],
-        aggfunc=sum,
-        fill_value=0)
-
-    trace1 = go.Bar(x=pv.index, y=pv[('Quantity', 'declined')], name='Declined')
-    trace2 = go.Bar(x=pv.index, y=pv[('Quantity', 'pending')], name='Pending')
-    trace3 = go.Bar(x=pv.index, y=pv[('Quantity', 'presented')], name='Presented')
-    trace4 = go.Bar(x=pv.index, y=pv[('Quantity', 'won')], name='Won')
-
-    return {
-        'data': [trace1, trace2, trace3, trace4],
-        'layout':
-        go.Layout(
-            title='Customer Order Status for {}'.format(Manager),
-            barmode='stack')
-    }
-
+@app.callback(dash.dependencies.Output('display-value', 'children'),
+              [dash.dependencies.Input('dropdown', 'value')])
+def display_value(value):
+    return 'You have selected "{}"'.format(value)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-
-
-
-
-
-
-
