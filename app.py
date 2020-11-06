@@ -18,14 +18,6 @@ dis_activities = pd.read_csv('static/dis_activities.csv')
 
 pick_list = list(tsne_2d.occ)
 
-top5 = {}
-
-for occ in dis_activities:
-    temp = dis_activities[occ].sort_values().reset_index().merge(
-        tsne_2d.groupby('occ')[['dim_0','dim_1','emp_2018','wage','sqrt_emp'
-                           ]].mean(),on='occ',how='inner').head(11)
-    top5[occ] = temp
-
 app.layout = html.Div([
     html.H2('Hello World'),
     dcc.Dropdown(
@@ -40,6 +32,15 @@ app.layout = html.Div([
               [dash.dependencies.Input('dropdown', 'value')])
 
 def display_value(value):
+    
+    top5 = {}
+
+    for occ in dis_activities:
+        temp = dis_activities[occ].sort_values().reset_index().merge(
+            tsne_2d.groupby('occ')[['dim_0','dim_1','emp_2018','wage','sqrt_emp'
+                               ]].mean(),on='occ',how='inner').head(11)
+        top5[occ] = temp
+    
     test_case = top5[value]
 
     fig = px.scatter(test_case, x='dim_0',y='dim_1',
