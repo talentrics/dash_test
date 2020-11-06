@@ -22,7 +22,7 @@ top5 = {}
 
 for occ in dis_activities:
     temp = dis_activities[occ].sort_values().reset_index().merge(
-        tsne_2d_edit.groupby('occ')[['dim_0','dim_1','emp_2018','wage','sqrt_emp'
+        tsne_2d.groupby('occ')[['dim_0','dim_1','emp_2018','wage','sqrt_emp'
                            ]].mean(),on='occ',how='inner').head(11)
     top5[occ] = temp
 
