@@ -39,12 +39,12 @@ app.layout = html.Div([
 @app.callback(dash.dependencies.Output('display-value', 'children'),
               [dash.dependencies.Input('dropdown', 'value')])
 
-test_case = top5[value]
-
-fig = px.scatter(test_case, x='dim_0',y='dim_1',
-                 title='Occupational Landscape',width=500, height=350)
-
 def display_value(value):
+    test_case = top5[value]
+
+    fig = px.scatter(test_case, x='dim_0',y='dim_1',
+                 title='Occupational Landscape',width=500, height=350)
+    
     return dcc.Graph(figure=fig)
 
 if __name__ == '__main__':
