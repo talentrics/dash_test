@@ -22,8 +22,10 @@ app.layout = html.Div([
     html.H2('Hello World'),
     dcc.Dropdown(
         id='dropdown',
-        options=[{'label': i, 'value': i} for i in [pick_list]],
-        value='Accountants and auditors'
+        options=[{'label': i, 'value': i} for i in ['Choreographers',
+        'Civil engineering technologists and technicians',
+        'Civil engineers','Cleaners of vehicles and equipment']],
+        value='Choreographers'
     ),
     html.Div(id='display-value'),
 ])
