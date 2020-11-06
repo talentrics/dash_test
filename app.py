@@ -39,14 +39,18 @@ def display_value(value):
 
     for occ in dis_activities:
         temp = dis_activities[occ].sort_values().reset_index().merge(
-            tsne_2d.groupby('occ')[['dim_0','dim_1','emp_2018','wage','sqrt_emp'
+            tsne_2d_edit.groupby('occ')[['dim_0','dim_1','emp_2018','wage','sqrt_emp'
                                ]].mean(),on='occ',how='inner').head(11)
         top5[occ] = temp
-    
-    test_case = top5[value]
+        
+    top5['Automotive service technicians and mechanics']
 
-    fig = px.scatter(test_case, x='dim_0',y='dim_1',
+    fig = px.scatter(test_case,x='dim_0',y='dim_1',
+                 hover_data={'sqrt_emp':False,'dim_0':False,
+                            'dim_1':False,'emp_2018':False},
+                 hover_name='occ',size='wage',
                  title='Occupational Landscape',width=500, height=350)
+    fig.update_layout(hoverlabel={'bgcolor':'white','font_size':12,'font_family':'Rockwell'})
     
     return fig.show()
 
