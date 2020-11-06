@@ -14,25 +14,38 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 
 tsne_2d = pd.read_csv('static/onet_tsne.csv')
+dis_activities = pd.read_csv('static/dis_activities.csv')
 
-fig = px.scatter(tsne_2d, x='dim_0',y='dim_1',
-                 title='Occupational Landscape',width=1000, height=700)
+pick_list = list(tsne_2d.occ)
+
+top5 = {}
+
+for occ in dis_activities:
+    temp = dis_activities[occ].sort_values().reset_index().merge(
+        tsne_2d_edit.groupby('occ')[['dim_0','dim_1','emp_2018','wage','sqrt_emp'
+                           ]].mean(),on='occ',how='inner').head(11)
+    top5[occ] = temp
 
 app.layout = html.Div([
     html.H2('Hello World'),
     dcc.Dropdown(
         id='dropdown',
-        options=[{'label': i, 'value': i} for i in ['LA', 'NYC', 'MTL']],
-        value='LA'
+        options=[{'label': i, 'value': i} for i in [pick_list]],
+        value='Accountants and auditors'
     ),
     html.Div(id='display-value'),
-    dcc.Graph(figure=fig)
 ])
 
 @app.callback(dash.dependencies.Output('display-value', 'children'),
               [dash.dependencies.Input('dropdown', 'value')])
+
+test_case = top5[value]
+
+fig = px.scatter(test_case, x='dim_0',y='dim_1',
+                 title='Occupational Landscape',width=500, height=350)
+
 def display_value(value):
-    return 'You have selected "{}"'.format(value)
+    return dcc.Graph(figure=fig)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
