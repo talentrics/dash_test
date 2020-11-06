@@ -48,7 +48,7 @@ def display_value(value):
     fig = px.scatter(test_case, x='dim_0',y='dim_1',
                  title='Occupational Landscape',width=500, height=350)
     
-    return dcc.Graph(figure=fig)
+    return fig.show()
 
 if __name__ == '__main__':
     app.run_server(debug=True)
