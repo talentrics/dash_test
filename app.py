@@ -9,7 +9,7 @@ from dash.dependencies import Input, Output
 
 app = dash.Dash(__name__)
 
-#server = app.server
+server = app.server
 
 tsne_2d = pd.read_csv('static/onet_tsne.csv')
 dis_activities = pd.read_csv('static/dis_activities.csv')
